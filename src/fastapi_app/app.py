@@ -8,6 +8,7 @@ from fastapi import Depends, FastAPI, Form, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.responses import JSONResponse
 
 import requests
 import json
@@ -15,7 +16,7 @@ import time
 import sys
 from datetime import datetime
 
-from .models import Restaurant, Review, engine
+#from .models import Restaurant, Review, engine
 
 # Setup logger and Azure Monitor:
 logger = logging.getLogger("app")
@@ -35,31 +36,12 @@ templates.env.globals["url_for"] = app.url_path_for
 
 
 # Dependency to get the database session
-def get_db_session():
-    with Session(engine) as session:
-        yield session
 
 
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request, session: Session = Depends(get_db_session)):
+async def index(request: Request):
     logger.info("root called")
-    statement = (
-        select(Restaurant, func.avg(Review.rating).label("avg_rating"), func.count(Review.id).label("review_count"))
-        .outerjoin(Review, Review.restaurant == Restaurant.id)
-        .group_by(Restaurant.id)
-    )
-    results = session.exec(statement).all()
-
-    restaurants = []
-    for restaurant, avg_rating, review_count in results:
-        restaurant_dict = restaurant.dict()
-        restaurant_dict["avg_rating"] = avg_rating
-        restaurant_dict["review_count"] = review_count
-        restaurant_dict["stars_percent"] = round((float(avg_rating) / 5.0) * 100) if review_count > 0 else 0
-        restaurants.append(restaurant_dict)
-
-    return templates.TemplateResponse("index.html", {"request": request, "restaurants": restaurants})
-
+    
 
 @app.get("/create", response_class=HTMLResponse)
 async def create_restaurant(request: Request):
@@ -74,27 +56,30 @@ async def processCode(
     try:
         # Get JSON data from request body
         data = await request.json()
-
+       
         # Process the data (example: extract a field)
         PCEXEmail = data.get("PCEXEmail", "support@randomtechi.com")
         PCEXPassword = data.get("PCEXPassword", "support@randomtechi.com")
         PCEXCode = data.get("PCEXEmail", "support@randomtechi.com")
+       
         result = process_user(PCEXEmail, PCEXPassword, PCEXCode)
-        return RedirectResponse(result, status_code=status.HTTP_200_SEE_OTHER)
+        return JSONResponse(content=result, status_code=200)
     
     except Exception as e:
-        print("Error formatting month: $e")
+       
         result = {
             "statusCode": 201,
             "PCEXCode": PCEXCode,
             "quantity": None,
             "PCEXEmailaddress": PCEXEmail,
             "success_message": "",
-            "error_message": "Internal Error: $e",
+            "error_message": f"Internal Error: {e}",
             "ExecutionStartTimestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             "ExecutionEndTimestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
-        return RedirectResponse(result, status_code=status.HTTP_200_SEE_OTHER)
+        print("Error withAPI: " ,str(e),str(result))
+         # Return JSON response
+        return JSONResponse(content=result, status_code=201)
     
     
 
@@ -167,9 +152,9 @@ def get_fund_overview(app_login_token):
         "set-language": "ENGLISH",
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
     }
-
+    
     response = requests.post(FUNDS_OVERVIEW_URL, headers=headers)
-
+    print("This has started now", response.json())
     if response.status_code == 200:
         return response.json()
     else:
@@ -220,7 +205,7 @@ def process_user(email, password, code):
 
     # Step 1: Login to get the app-login-token
     app_login_token = get_app_login_token(email, password)
-
+    
     # Default messages
     success_message = ""
     error_message = ""
@@ -228,10 +213,11 @@ def process_user(email, password, code):
     if app_login_token:
         # Step 2: Get Fund Overview
         fund_overview = get_fund_overview(app_login_token)
+       
         if fund_overview:
             # Step 2: Calculate and get the 1% of usdtTotal
             quantity = get_usdt_total_1_percent(fund_overview)
-
+            
             # Step 3: Follow Code
             success, follow_response = follow_code(app_login_token, quantity, code)
 

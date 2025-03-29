@@ -9,7 +9,6 @@ dependencies = [
     "uvicorn[standard]",
     "uvicorn-worker",
     "python-multipart",
-    "psycopg2",
     "sqlmodel",
 ]
 
