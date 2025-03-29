@@ -2,6 +2,9 @@ import logging
 import os
 import pathlib
 from datetime import datetime
+import gzip
+import brotli
+
 
 from azure.monitor.opentelemetry import configure_azure_monitor
 from fastapi import Depends, FastAPI, Form, Request, status
@@ -152,9 +155,9 @@ def get_fund_overview(app_login_token):
         "set-language": "ENGLISH",
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
     }
-    
+   
     response = requests.post(FUNDS_OVERVIEW_URL, headers=headers)
-    print("This has started now", response.json())
+
     if response.status_code == 200:
         return response.json()
     else:
@@ -225,12 +228,13 @@ def process_user(email, password, code):
             execution_end_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
             # Prepare success or error message
+    
             if success:
-                statusCode: 200
+                statusCode= 200
                 success_message = f"Success for {email} - Follow Code succeeded."
                 error_message = ""  # Clear error message if successful
             else:
-                statusCode: 201
+                statusCode= 201
                 success_message = ""
                 error_message = f"Failure for {email} - Follow Code failed. Reason: {follow_response.get('errCodeDes', 'Unknown error')}"
             
@@ -270,5 +274,5 @@ def process_user(email, password, code):
             "ExecutionStartTimestamp": execution_start_timestamp,
             "ExecutionEndTimestamp": execution_end_timestamp
         }
-
+    
 
