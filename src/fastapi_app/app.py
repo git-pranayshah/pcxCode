@@ -63,7 +63,7 @@ async def processCode(
         # Process the data (example: extract a field)
         PCEXEmail = data.get("PCEXEmail", "support@randomtechi.com")
         PCEXPassword = data.get("PCEXPassword", "support@randomtechi.com")
-        PCEXCode = data.get("PCEXEmail", "support@randomtechi.com")
+        PCEXCode = data.get("PCEXCode", "support@randomtechi.com")
        
         result = process_user(PCEXEmail, PCEXPassword, PCEXCode)
         return JSONResponse(content=result, status_code=200)
